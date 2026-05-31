@@ -1,4 +1,4 @@
-
+_author_ = 'Roy'
 
 import tkinter as tk
 from tkinter import ttk

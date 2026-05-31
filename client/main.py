@@ -1,4 +1,4 @@
-
+_author_ = 'Roy'
 
 from client.login_window import LoginWindow
 from client.lobby_window import LobbyWindow

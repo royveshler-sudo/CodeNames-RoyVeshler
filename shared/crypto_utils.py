@@ -1,4 +1,4 @@
-
+_author_ = 'Roy'
 import os
 
 from cryptography.hazmat.backends import default_backend

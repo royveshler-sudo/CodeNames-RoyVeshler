@@ -1,4 +1,4 @@
-
+_author_ = 'Roy'
 
 import hashlib
 import json
