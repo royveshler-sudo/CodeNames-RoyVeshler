@@ -1,11 +1,4 @@
-"""Pygame game window: 5x5 board + sidebar.
 
-- Spymasters see all 25 colors faintly tinted.
-- Operatives only see colors for already-revealed cards.
-- Active operative: cards are clickable; an "End Turn" button is enabled
-  after the first guess.
-- Active spymaster: a clue input box + a number selector + "Send Clue".
-"""
 
 import pygame
 
@@ -157,7 +150,7 @@ class GameWindow:
         self.font_card = make_font(max(10, int(self.card_h * 0.18)), bold=True)
         self.font_card_sm = make_font(max(9, int(self.card_h * 0.15)), bold=True)
 
-    def _card_rect(self, index: int) -> pygame.Rect:
+    def _card_rect(self, index):
         row, col = divmod(index, 5)
         return pygame.Rect(
             self.board_left + col * (self.card_w + CARD_GAP),
@@ -168,20 +161,20 @@ class GameWindow:
 
     # -- helpers -----------------------------------------------------------
 
-    def _add_log(self, line: str):
+    def _add_log(self, line):
         self.log.append(line)
         # Keep only the last 12 entries to fit on screen
         if len(self.log) > 12:
             self.log = self.log[-12:]
 
-    def _is_my_turn(self) -> bool:
+    def _is_my_turn(self) :
         return self.current_team == self.team and self.winner is None
 
-    def _is_active_spymaster(self) -> bool:
+    def _is_active_spymaster(self) :
         return (self._is_my_turn() and self.role == "spymaster"
                 and self.current_clue is None)
 
-    def _is_active_operative(self) -> bool:
+    def _is_active_operative(self) :
         return (self._is_my_turn() and self.role == "operative"
                 and self.current_clue is not None)
 
@@ -287,7 +280,7 @@ class GameWindow:
 
     # -- rendering ---------------------------------------------------------
 
-    def _card_background(self, index: int):
+    def _card_background(self, index):
         """Return (fill_color, text_color) for a card."""
         if index in self.revealed:
             color = self.revealed[index]

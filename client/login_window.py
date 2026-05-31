@@ -85,7 +85,7 @@ class LoginWindow:
         self.network.send(make_message(
             P.LOGIN, username=self.username_var.get(), password=self.password_var.get()))
 
-    def _ready(self) -> bool:
+    def _ready(self):
         if self.network is None or self.network.error is not None:
             self.status_var.set("Not connected — try restarting the client.")
             return False

@@ -15,45 +15,45 @@ from shared.crypto_utils import decrypt_with, encrypt_for
 # ---------------------------------------------------------------------------
 
 # Client -> Server
-SIGNUP = "SIGNUP"
-LOGIN = "LOGIN"
-JOIN_LOBBY = "JOIN_LOBBY"
-CHOOSE_SEAT = "CHOOSE_SEAT"
-READY = "READY"
-GIVE_CLUE = "GIVE_CLUE"
-GUESS_CARD = "GUESS_CARD"
-END_TURN = "END_TURN"
-LEAVE = "LEAVE"
+SIGNUP      = "SGUP"
+LOGIN       = "LGIN"
+JOIN_LOBBY  = "JLBY"
+CHOOSE_SEAT = "CHST"
+READY       = "REDY"
+GIVE_CLUE   = "GCLU"
+GUESS_CARD  = "GUSD"
+END_TURN    = "ETRN"
+LEAVE       = "LEAV"
 
 # Server -> Client
-SIGNUP_RESULT = "SIGNUP_RESULT"
-LOGIN_RESULT = "LOGIN_RESULT"
-LOBBY_STATE = "LOBBY_STATE"
-GAME_START = "GAME_START"
-GAME_STATE = "GAME_STATE"
-CLUE_GIVEN = "CLUE_GIVEN"
-GUESS_RESULT = "GUESS_RESULT"
-GAME_OVER = "GAME_OVER"
-ERROR = "ERROR"
+SIGNUP_RESULT = "SGRS"
+LOGIN_RESULT  = "LGRS"
+LOBBY_STATE   = "LBST"
+GAME_START    = "GMST"
+GAME_STATE    = "GMSE"
+CLUE_GIVEN    = "CLGV"
+GUESS_RESULT  = "GSRS"
+GAME_OVER     = "GMOV"
+ERROR         = "ERRR"
 
 
 # ---------------------------------------------------------------------------
 # Framing — every send is preceded by a 4-byte big-endian length
 # ---------------------------------------------------------------------------
 
-def send_frame(sock, payload: bytes):
+def send_frame(sock, payload):
     """Send a single length-prefixed frame."""
     length = len(payload).to_bytes(4, "big")
     sock.sendall(length + payload)
 
 
-def recv_frame(sock) -> bytes:
+def recv_frame(sock):
     """Receive exactly one frame."""
     length = int.from_bytes(_recv_exact(sock, 4), "big")
     return _recv_exact(sock, length)
 
 
-def _recv_exact(sock, n: int) -> bytes:
+def _recv_exact(sock, n):
     """Read exactly n bytes from the socket, or raise ConnectionError."""
     data = b""
     while len(data) < n:
@@ -68,20 +68,20 @@ def _recv_exact(sock, n: int) -> bytes:
 # Encrypted JSON messages on top of framing
 # ---------------------------------------------------------------------------
 
-def send_encrypted(sock, remote_public_key, message: dict):
+def send_encrypted(sock, remote_public_key, message):
     """JSON-encode, RSA-encrypt with the recipient's public key, then frame."""
     plaintext = json.dumps(message).encode("utf-8")
     ciphertext = encrypt_for(remote_public_key, plaintext)
     send_frame(sock, ciphertext)
 
 
-def recv_encrypted(sock, my_private_key) -> dict:
+def recv_encrypted(sock, my_private_key):
     """Read one frame, RSA-decrypt with our private key, then JSON-decode."""
     ciphertext = recv_frame(sock)
     plaintext = decrypt_with(my_private_key, ciphertext)
     return json.loads(plaintext.decode("utf-8"))
 
 
-def make_message(msg_type: str, **data) -> dict:
+def make_message(msg_type, **data):
     """Tiny helper: build the standard { "type": ..., "data": {...} } envelope."""
     return {"type": msg_type, "data": data}

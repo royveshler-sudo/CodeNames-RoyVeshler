@@ -38,14 +38,14 @@ except ImportError:
 # pygame.font.SysFont accepts a comma-separated list and picks the first
 # installed match.
 _HEBREW_CAPABLE_FONTS = ",".join([
-    "Arial Hebrew",          # macOS
-    "Heebo",                 # macOS / Linux (if installed)
-    "Noto Sans Hebrew",      # Linux (Noto family)
-    "DejaVu Sans",           # most Linux desktops
-    "FreeSans",              # Linux fallback
-    "Arial Unicode MS",      # cross-platform Unicode font
-    "Segoe UI",              # Windows
-    "Arial",                 # Windows / macOS
+    "Segoe UI",           # Windows (הכי מומלץ למחשב שלך)
+    "Arial",              # Windows / macOS
+    "Arial Hebrew",        # macOS
+    "Heebo",              # macOS / Linux (if installed)
+    "Noto Sans Hebrew",    # Linux (Noto family)
+    "DejaVu Sans",        # most Linux desktops
+    "FreeSans",           # Linux fallback
+    "Arial Unicode MS",   # cross-platform Unicode font
     "Helvetica Neue",
     "Helvetica",
 ])

@@ -64,15 +64,15 @@ class ClientHandler:
 
     # -- send helpers (used by ServerState.broadcast too) ------------------
 
-    def send(self, message: dict):
+    def send(self, message):
         send_encrypted(self.sock, self.client_public_key, message)
 
-    def send_error(self, text: str):
+    def send_error(self, text):
         self.send(make_message(P.ERROR, message=text))
 
     # -- dispatch ----------------------------------------------------------
 
-    def _dispatch(self, msg: dict):
+    def _dispatch(self, msg):
         msg_type = msg.get("type")
         data = msg.get("data", {}) or {}
 

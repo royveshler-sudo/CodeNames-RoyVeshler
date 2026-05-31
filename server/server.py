@@ -52,7 +52,7 @@ class ServerState:
         """Snapshot of currently-connected client handlers. Lock-free read."""
         return list(self.lobby.clients.values())
 
-    def broadcast_all(self, message: dict):
+    def broadcast_all(self, message):
         """Send the same message to every connected client."""
         for handler in self._connected_handlers():
             try:
@@ -121,7 +121,7 @@ class ServerState:
 # Boot
 # ---------------------------------------------------------------------------
 
-def _load_word_pool(path: str) -> list:
+def _load_word_pool(path):
     if not os.path.exists(path):
         raise SystemExit(f"Missing word file: {path}")
     with open(path, "r", encoding="utf-8") as f:

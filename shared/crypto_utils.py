@@ -69,7 +69,7 @@ def load_key_pair(priv_path, pub_path, password):
     return private_key, public_key
 
 
-def public_key_to_pem(public_key) -> bytes:
+def public_key_to_pem(public_key):
     """Serialize a public key for sending over the wire."""
     return public_key.public_bytes(
         encoding=serialization.Encoding.PEM,
@@ -82,7 +82,7 @@ def public_key_from_pem(pem_bytes):
     return serialization.load_pem_public_key(pem_bytes, backend=default_backend())
 
 
-def encrypt_for(recipient_public_key, plaintext: bytes) -> bytes:
+def encrypt_for(recipient_public_key, plaintext):
     """Encrypt arbitrary-length plaintext by chunking.
 
     Returns the concatenation of 256-byte ciphertexts, one per 190-byte chunk.
@@ -98,7 +98,7 @@ def encrypt_for(recipient_public_key, plaintext: bytes) -> bytes:
     return result
 
 
-def decrypt_with(my_private_key, ciphertext: bytes) -> bytes:
+def decrypt_with(my_private_key, ciphertext):
     """Decrypt arbitrary-length ciphertext. Length must be a multiple of 256."""
     if len(ciphertext) == 0 or len(ciphertext) % ENCRYPTED_CHUNK_SIZE != 0:
         raise ValueError("Ciphertext length is not a positive multiple of 256")

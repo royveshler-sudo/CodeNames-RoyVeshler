@@ -78,7 +78,7 @@ class LobbyWindow:
                 return team, role
         return None
 
-    def _i_am_ready(self) -> bool:
+    def _i_am_ready(self) :
         return bool(self.ready.get(self.username, False))
 
     # -- event handling ----------------------------------------------------

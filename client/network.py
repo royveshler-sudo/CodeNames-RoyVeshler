@@ -66,7 +66,7 @@ class NetworkClient:
 
     # -- send / recv -------------------------------------------------------
 
-    def send(self, message: dict):
+    def send(self, message):
         """Encrypt and send a JSON message. Safe to call from the UI thread."""
         if self._closed or self.sock is None:
             return
@@ -76,7 +76,7 @@ class NetworkClient:
             self.error = exc
             self.close()
 
-    def get_message(self, timeout: float = 0.0):
+    def get_message(self, timeout = 0.0):
         """Non-blocking poll for the next message; returns None on timeout."""
         try:
             return self.incoming.get(timeout=timeout) if timeout > 0 else self.incoming.get_nowait()

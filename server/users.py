@@ -16,13 +16,13 @@ USERS_FILE = "data/users.json"
 _lock = threading.Lock()
 
 
-def _hash_password(password: str, salt: bytes) -> str:
+def _hash_password(password, salt):
     """Return 'salt_hex:hash_hex' for the given password+salt."""
     h = hashlib.sha256(salt + password.encode("utf-8")).hexdigest()
     return salt.hex() + ":" + h
 
 
-def _verify_password(password: str, stored: str) -> bool:
+def _verify_password(password, stored):
     """Check a password against the stored 'salt_hex:hash_hex' value."""
     try:
         salt_hex, _ = stored.split(":", 1)
@@ -32,14 +32,14 @@ def _verify_password(password: str, stored: str) -> bool:
     return _hash_password(password, salt) == stored
 
 
-def _load() -> dict:
+def _load() :
     if not os.path.exists(USERS_FILE):
         return {}
     with open(USERS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def _save(users: dict) -> None:
+def _save(users):
     os.makedirs(os.path.dirname(USERS_FILE), exist_ok=True)
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         json.dump(users, f, indent=2)
@@ -56,7 +56,7 @@ class UserStore:
         with _lock:
             self._users = _load()
 
-    def signup(self, username: str, password: str):
+    def signup(self, username, password):
         username = (username or "").strip()
         if not username or not password:
             return False, "Username and password are required"
@@ -73,7 +73,7 @@ class UserStore:
             _save(self._users)
         return True, None
 
-    def login(self, username: str, password: str):
+    def login(self, username, password):
         username = (username or "").strip()
         with _lock:
             stored = self._users.get(username)

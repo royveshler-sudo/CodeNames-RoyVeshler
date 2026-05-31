@@ -26,7 +26,7 @@ class Game:
     engine we mostly identify players by their username (player_id).
     """
 
-    def __init__(self, players: dict, word_pool: list, seed=None):
+    def __init__(self, players, word_pool, seed=None):
         if len(players) != 4:
             raise ValueError("Need exactly 4 players")
 
@@ -73,7 +73,7 @@ class Game:
     # Views
     # -----------------------------------------------------------------
 
-    def get_start_payload_for(self, username: str) -> dict:
+    def get_start_payload_for(self, username):
         """Build the GAME_START data dict for a specific player."""
         team, role = self.role_of[username]
         payload = {
@@ -87,7 +87,7 @@ class Game:
             payload["key"] = [card["color"] for card in self.board]
         return payload
 
-    def get_state_payload(self) -> dict:
+    def get_state_payload(self):
         """Public state shared by everyone (no hidden colors)."""
         revealed = []
         for i, card in enumerate(self.board):
@@ -106,7 +106,7 @@ class Game:
     # Actions
     # -----------------------------------------------------------------
 
-    def give_clue(self, username: str, word: str, number) -> None:
+    def give_clue(self, username, word, number) :
         """Validate and record a clue. Resets the guess counter."""
         if self.is_over():
             raise InvalidAction("Game is over")
@@ -149,7 +149,7 @@ class Game:
         self.guesses_left = (number + 1) if number >= 1 else 10**6
         self.guesses_made_this_turn = 0
 
-    def make_guess(self, username: str, index: int) -> dict:
+    def make_guess(self, username, index) :
         """Reveal a card. Returns the GUESS_RESULT payload."""
         if self.is_over():
             raise InvalidAction("Game is over")
@@ -211,7 +211,7 @@ class Game:
 
         return result
 
-    def end_turn(self, username: str) -> None:
+    def end_turn(self, username) :
         """Operative voluntarily ends the turn."""
         if self.is_over():
             raise InvalidAction("Game is over")
@@ -232,18 +232,18 @@ class Game:
     # Internal helpers
     # -----------------------------------------------------------------
 
-    def _remaining_for(self, team: str) -> int:
+    def _remaining_for(self, team) :
         return sum(1 for c in self.board if c["color"] == team and not c["revealed"])
 
-    def _pass_turn(self) -> None:
+    def _pass_turn(self) :
         self.current_team = BLUE if self.current_team == RED else RED
         self.current_clue = None
         self.guesses_left = 0
         self.guesses_made_this_turn = 0
 
-    def _end_game(self) -> None:
+    def _end_game(self):
         self.current_clue = None
         self.guesses_left = 0
 
-    def is_over(self) -> bool:
+    def is_over(self):
         return self.winner is not None
