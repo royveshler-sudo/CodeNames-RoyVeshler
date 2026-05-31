@@ -1,11 +1,4 @@
-"""Tkinter signup/login window.
 
-Returns the username on success, or None if the user closed the window.
-
-The login window owns the NetworkClient: it does the handshake, then sends
-SIGNUP or LOGIN messages and waits for the matching result. After a
-successful login it hands the connected NetworkClient off to the caller.
-"""
 
 import tkinter as tk
 from tkinter import ttk
@@ -17,7 +10,7 @@ from client.network import NetworkClient
 
 
 class LoginWindow:
-    """Simple tkinter window with username/password fields and two buttons."""
+
 
     def __init__(self):
         self.root = tk.Tk()
@@ -25,9 +18,9 @@ class LoginWindow:
         self.root.geometry("360x360")
         self.root.resizable(True, True)
 
-        self.network = None       # set after successful connect()
-        self.username = None      # set after successful login
-        self._waiting_for = None  # "SIGNUP" or "LOGIN" while a request is pending
+        self.network = None
+        self.username = None
+        self._waiting_for = None
 
         self._build_ui()
         self._connect_to_server()
@@ -56,9 +49,6 @@ class LoginWindow:
 
     def _connect_to_server(self):
         self.status_var.set("Generating keys + connecting...")
-        # Tkinter normally would freeze here, but key gen + TCP connect is
-        # fast enough on localhost that we do it inline for simplicity.
-        # ~1-2 seconds.
         self.root.update_idletasks()
         try:
             self.network = NetworkClient()
@@ -67,7 +57,6 @@ class LoginWindow:
         except Exception as exc:
             self.status_var.set(f"Connection failed: {exc}")
 
-    # -- button handlers ---------------------------------------------------
 
     def _on_signup(self):
         if not self._ready():
@@ -91,10 +80,8 @@ class LoginWindow:
             return False
         return True
 
-    # -- poll loop ---------------------------------------------------------
 
     def _poll(self):
-        """Drain the incoming queue and react to results."""
         if self.network is not None:
             while True:
                 msg = self.network.get_message()
@@ -129,14 +116,12 @@ class LoginWindow:
         elif msg_type == P.ERROR:
             self.status_var.set(f"Server error: {data.get('message')}")
 
-    # -- run ---------------------------------------------------------------
 
     def run(self):
-        """Show the window. Returns (username, network) or (None, None)."""
         self.root.after(50, self._poll)
         self.root.mainloop()
         if self.username is None:
-            # User closed the window before logging in.
+
             if self.network is not None:
                 self.network.close()
             return None, None

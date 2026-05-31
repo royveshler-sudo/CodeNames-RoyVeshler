@@ -1,4 +1,4 @@
-"""Per-client thread: handshake, then dispatch messages until disconnect."""
+
 
 import traceback
 
@@ -10,11 +10,6 @@ from server.game import InvalidAction
 
 
 class ClientHandler:
-    """One per connected client. Runs on its own thread.
-
-    The handler keeps a reference to a shared `ServerState` object (created
-    by server.py) that holds the lock, lobby, user store, and game.
-    """
 
     def __init__(self, sock, addr, state, server_private_key, server_public_key):
         self.sock = sock
@@ -23,12 +18,9 @@ class ClientHandler:
         self.server_private_key = server_private_key
         self.server_public_key = server_public_key
 
-        # Set after the handshake.
         self.client_public_key = None
-        # Set after a successful login.
         self.username = None
 
-    # -- entry point -------------------------------------------------------
 
     def run(self):
         try:
@@ -53,16 +45,11 @@ class ClientHandler:
             self._on_disconnect()
             self._close()
 
-    # -- handshake ---------------------------------------------------------
 
     def _handshake(self):
-        # Server -> client: server's public key (plaintext frame).
         send_frame(self.sock, public_key_to_pem(self.server_public_key))
-        # Client -> server: client's public key (plaintext frame).
         client_pem = recv_frame(self.sock)
         self.client_public_key = public_key_from_pem(client_pem)
-
-    # -- send helpers (used by ServerState.broadcast too) ------------------
 
     def send(self, message):
         send_encrypted(self.sock, self.client_public_key, message)
@@ -70,13 +57,11 @@ class ClientHandler:
     def send_error(self, text):
         self.send(make_message(P.ERROR, message=text))
 
-    # -- dispatch ----------------------------------------------------------
 
     def _dispatch(self, msg):
         msg_type = msg.get("type")
         data = msg.get("data", {}) or {}
 
-        # Auth messages — allowed before login.
         if msg_type == P.SIGNUP:
             ok, err = self.state.users.signup(data.get("username", ""), data.get("password", ""))
             self.send(make_message(P.SIGNUP_RESULT, ok=ok, error=err))
@@ -86,7 +71,6 @@ class ClientHandler:
             username = (data.get("username") or "").strip()
             ok, err = self.state.users.login(username, data.get("password", ""))
             if ok:
-                # Reject double-login of the same username.
                 with self.state.lock:
                     if username in self.state.lobby.clients:
                         ok = False
@@ -96,7 +80,6 @@ class ClientHandler:
             self.send(make_message(P.LOGIN_RESULT, ok=ok, error=err))
             return
 
-        # All later messages require a logged-in user.
         if self.username is None:
             self.send_error("Log in first")
             return
@@ -148,7 +131,6 @@ class ClientHandler:
 
         self.send_error(f"Unknown message type: {msg_type}")
 
-    # -- game actions ------------------------------------------------------
 
     def _handle_give_clue(self, data):
         word = data.get("word", "")
@@ -163,11 +145,10 @@ class ClientHandler:
             except InvalidAction as exc:
                 self.send_error(str(exc))
                 return
-            # Broadcast both CLUE_GIVEN (for UI logs) and GAME_STATE.
+
             team, _ = game.role_of[self.username]
             clue_msg = make_message(P.CLUE_GIVEN, team=team, word=word, number=number)
-        # Outside the lock — broadcasts iterate clients but the inner sends
-        # don't need to mutate game state.
+
         self.state.broadcast_all(clue_msg)
         self.state.broadcast_game_state()
 
@@ -207,19 +188,17 @@ class ClientHandler:
                 return
         self.state.broadcast_game_state()
 
-    # -- cleanup -----------------------------------------------------------
 
     def _on_disconnect(self):
         if self.username is None:
             return
         with self.state.lock:
             self.state.lobby.remove_client(self.username)
-            # If a game is in progress and one of the seated players left,
-            # abort the game and return everyone to the lobby.
+
             if (self.state.game is not None
                     and self.username in self.state.game.role_of):
                 self.state.game = None
-                # Reset ready flags so people deliberately re-confirm.
+
                 for u in self.state.lobby.ready:
                     self.state.lobby.ready[u] = False
         self.state.broadcast_lobby()

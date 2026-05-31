@@ -1,12 +1,4 @@
-"""Pygame lobby window: 4 seats and a Ready button.
 
-Loop:
-- Sends JOIN_LOBBY on entry.
-- Renders seats from the latest LOBBY_STATE.
-- On click: sends CHOOSE_SEAT / READY.
-- On GAME_START: stores the initial payload and exits, returning control
-  to client/main.py which will open the game window.
-"""
 
 import pygame
 
@@ -29,7 +21,7 @@ BUTTON_BG = (70, 130, 70)
 BUTTON_BG_DISABLED = (70, 70, 70)
 BUTTON_BG_READY = (160, 110, 50)
 
-# Seat boxes — 4 large rectangles
+
 SEAT_BOXES = {
     ("red", "spymaster"):  pygame.Rect(60,  120, 320, 140),
     ("red", "operative"):  pygame.Rect(60,  280, 320, 140),
@@ -41,7 +33,7 @@ READY_BUTTON = pygame.Rect(300, 470, 200, 60)
 
 
 class LobbyWindow:
-    """Owns the pygame window and pumps messages from the NetworkClient."""
+
 
     def __init__(self, network, username):
         self.network = network
@@ -50,26 +42,23 @@ class LobbyWindow:
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption(f"Codenames — Lobby ({username})")
-        # Use Hebrew-capable, BiDi-aware fonts so Hebrew usernames render
-        # correctly. See client/text_utils.py.
+
         self.font_big = make_font(28, bold=True)
         self.font_mid = make_font(20)
         self.font_small = make_font(16)
         self.clock = pygame.time.Clock()
 
-        # Latest snapshot from the server.
+
         self.seats = {f"{t}_{r}": None for (t, r) in SEAT_BOXES}
         self.ready = {}
         self.status = "Joining lobby..."
 
-        # Set to GAME_START data dict when the server signals the start.
         self.game_start_payload = None
         self.quit = False
 
-        # Announce ourselves.
         self.network.send(make_message(P.JOIN_LOBBY))
 
-    # -- helpers -----------------------------------------------------------
+
 
     def _my_seat(self):
         for key, occupant in self.seats.items():
@@ -81,15 +70,12 @@ class LobbyWindow:
     def _i_am_ready(self) :
         return bool(self.ready.get(self.username, False))
 
-    # -- event handling ----------------------------------------------------
 
     def _on_click(self, pos):
-        # Did the user click a seat?
         for (team, role), rect in SEAT_BOXES.items():
             if rect.collidepoint(pos):
                 self.network.send(make_message(P.CHOOSE_SEAT, team=team, role=role))
                 return
-        # Or the ready button?
         if READY_BUTTON.collidepoint(pos):
             if self._my_seat() is None:
                 self.status = "Pick a seat before pressing Ready."
@@ -112,12 +98,11 @@ class LobbyWindow:
         elif msg_type == P.ERROR:
             self.status = f"Error: {data.get('message')}"
 
-    # -- rendering ---------------------------------------------------------
+
 
     def _draw_seat(self, team, role, rect):
         occupant = self.seats.get(f"{team}_{role}")
         bg = RED_BG if team == "red" else BLUE_BG
-        # Slightly darker when free.
         if occupant is None:
             bg = tuple(max(0, c - 40) for c in bg)
 
@@ -143,7 +128,6 @@ class LobbyWindow:
         for (team, role), rect in SEAT_BOXES.items():
             self._draw_seat(team, role, rect)
 
-        # Ready button
         if self._my_seat() is None:
             ready_color = BUTTON_BG_DISABLED
             ready_text = "Ready"
@@ -160,13 +144,11 @@ class LobbyWindow:
             READY_BUTTON.y + (READY_BUTTON.height - label.get_height()) // 2,
         ))
 
-        # Status line
         status_lbl = self.font_small.render(self.status, True, FG)
         self.screen.blit(status_lbl, (20, HEIGHT - 28))
 
         pygame.display.flip()
 
-    # -- main loop ---------------------------------------------------------
 
     def run(self):
         while not self.quit:
@@ -176,7 +158,6 @@ class LobbyWindow:
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     self._on_click(event.pos)
 
-            # Drain incoming messages.
             while True:
                 msg = self.network.get_message()
                 if msg is None:

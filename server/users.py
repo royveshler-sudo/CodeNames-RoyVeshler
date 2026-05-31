@@ -1,8 +1,4 @@
-"""Signup/login backed by data/users.json.
 
-Each user is stored as "salt_hex:hash_hex" where hash = sha256(salt + password).
-The salt is 16 random bytes per user, generated at signup with os.urandom.
-"""
 
 import hashlib
 import json
@@ -12,18 +8,15 @@ import threading
 
 USERS_FILE = "data/users.json"
 
-# Single lock guards both the in-memory dict and the file on disk.
 _lock = threading.Lock()
 
 
 def _hash_password(password, salt):
-    """Return 'salt_hex:hash_hex' for the given password+salt."""
     h = hashlib.sha256(salt + password.encode("utf-8")).hexdigest()
     return salt.hex() + ":" + h
 
 
 def _verify_password(password, stored):
-    """Check a password against the stored 'salt_hex:hash_hex' value."""
     try:
         salt_hex, _ = stored.split(":", 1)
         salt = bytes.fromhex(salt_hex)
@@ -46,12 +39,6 @@ def _save(users):
 
 
 class UserStore:
-    """Tiny JSON-backed account store.
-
-    Methods return (ok, error_message) so the server can build SIGNUP_RESULT /
-    LOGIN_RESULT messages directly.
-    """
-
     def __init__(self):
         with _lock:
             self._users = _load()

@@ -8,8 +8,7 @@ from shared.protocol import make_message
 from client.text_utils import make_font
 
 
-# Default and minimum window dimensions. The window is resizable; the
-# board, sidebar, cards, and fonts are all recomputed on each resize.
+
 DEFAULT_WIDTH = 1100
 DEFAULT_HEIGHT = 720
 MIN_WIDTH = 900
@@ -18,27 +17,27 @@ MIN_HEIGHT = 600
 BG = (24, 24, 30)
 FG = (235, 235, 240)
 
-# Layout constants that don't depend on window size.
+
 BOARD_MARGIN = 30
 CARD_GAP = 8
-SIDEBAR_GAP = 20         # gap between board and sidebar
-CARD_ASPECT = 1.6        # width / height ratio (matches original 160x100)
+SIDEBAR_GAP = 20
+CARD_ASPECT = 1.6
 
-# Colors for cards (revealed background / spymaster tint)
+
 COLOR_FULL = {
     "red":      (190, 70, 70),
     "blue":     (70, 90, 190),
     "neutral":  (215, 200, 160),
     "assassin": (30, 30, 30),
 }
-# Faded versions for the spymaster's pre-reveal hint.
+
 COLOR_TINT = {
     "red":      (110, 70, 70),
     "blue":     (70, 80, 110),
     "neutral":  (130, 120, 100),
     "assassin": (40, 40, 50),
 }
-CARD_UNREVEALED = (210, 200, 190)   # operative's "blank" card
+CARD_UNREVEALED = (210, 200, 190)
 CARD_TEXT = (20, 20, 24)
 CARD_TEXT_LIGHT = (240, 240, 240)
 
@@ -49,91 +48,75 @@ class GameWindow:
         self.username = username
 
         # GAME_START data
-        self.board = start_payload["board"]  # list of {"word": ...}
+        self.board = start_payload["board"]
         self.role = start_payload["your_role"]
         self.team = start_payload["your_team"]
-        self.key = start_payload.get("key")  # 25 colors for spymaster, else None
+        self.key = start_payload.get("key")
 
-        # State that arrives in GAME_STATE messages
+
         self.current_team = start_payload["starting_team"]
         self.current_clue = None
         self.guesses_left = 0
         self.red_remaining = 9 if self.current_team == "red" else 8
         self.blue_remaining = 9 if self.current_team == "blue" else 8
-        self.revealed = {}  # index -> color
+        self.revealed = {}
 
-        # Sidebar log of events
+
         self.log = []
         self._add_log(f"You are the {self.team.upper()} {self.role.upper()}")
         self._add_log(f"{self.current_team.upper()} team starts.")
 
-        # End-game banner
+
         self.winner = None
         self.over_reason = None
 
-        # Spymaster input
+
         self.clue_input = ""
         self.clue_number = 1
         self.clue_input_active = False
-        self.guess_count_this_turn = 0  # local tracking for End Turn enable
+        self.guess_count_this_turn = 0
 
         pygame.init()
         self.screen = pygame.display.set_mode(
             (DEFAULT_WIDTH, DEFAULT_HEIGHT), pygame.RESIZABLE)
         pygame.display.set_caption(f"Codenames — {self.team} {self.role} ({username})")
-        # Use Hebrew-capable, BiDi-aware fonts so Hebrew clues / usernames /
-        # board words render correctly. See client/text_utils.py.
+
+
         self.font_side = make_font(18)
         self.font_small = make_font(14)
         self.font_big = make_font(28, bold=True)
         self.clock = pygame.time.Clock()
 
-        # Layout-dependent attributes (board geometry, button rects, card
-        # fonts) are initialized by _recompute_layout, and refreshed every
-        # time the window is resized.
+
+
+
         self._recompute_layout()
 
-    # -- layout ------------------------------------------------------------
+
 
     def _recompute_layout(self):
-        """Recalculate board geometry, sidebar rects, and card fonts from
-        the current window size. Called once at startup and on every
-        VIDEORESIZE event."""
         w, h = self.screen.get_size()
         self.width = w
         self.height = h
 
-        # Sidebar width: ~25% of window, clamped to a usable range.
         sidebar_w = max(220, min(320, int(w * 0.25)))
-
-        # Space available for the 5x5 board (everything that isn't margin
-        # or sidebar).
         avail_w = w - 2 * BOARD_MARGIN - sidebar_w - SIDEBAR_GAP
         avail_h = h - 2 * BOARD_MARGIN
 
-        # Largest card size that fits both dimensions while keeping the
-        # original 1.6:1 aspect ratio.
         card_w_by_width = (avail_w - 4 * CARD_GAP) / 5
         card_w_by_height = ((avail_h - 4 * CARD_GAP) / 5) * CARD_ASPECT
         card_w = max(60, min(card_w_by_width, card_w_by_height))
         self.card_w = int(card_w)
         self.card_h = int(card_w / CARD_ASPECT)
 
-        # Center the board in its available area.
         board_w = 5 * self.card_w + 4 * CARD_GAP
         board_h = 5 * self.card_h + 4 * CARD_GAP
         self.board_left = BOARD_MARGIN + max(0, (avail_w - board_w) // 2)
         self.board_top = BOARD_MARGIN + max(0, (avail_h - board_h) // 4)
 
-        # Sidebar starts after the board area, regardless of where the
-        # board itself ended up after centering.
         self.side_left = BOARD_MARGIN + avail_w + SIDEBAR_GAP
         self.side_w = w - self.side_left - BOARD_MARGIN
 
-        # Sidebar controls are anchored to the bottom of the window so the
-        # log area above them grows/shrinks with the window height. The
-        # offsets match the original 720-px layout (clue_box 360, +/- 410,
-        # send/end 460).
         self.clue_box = pygame.Rect(
             self.side_left, h - 360, self.side_w, 36)
         self.minus_button = pygame.Rect(
@@ -145,8 +128,6 @@ class GameWindow:
         self.end_turn_button = pygame.Rect(
             self.side_left, h - 260, self.side_w, 44)
 
-        # Card fonts scale with card height so the words keep filling
-        # roughly the same proportion of the card.
         self.font_card = make_font(max(10, int(self.card_h * 0.18)), bold=True)
         self.font_card_sm = make_font(max(9, int(self.card_h * 0.15)), bold=True)
 
@@ -163,7 +144,6 @@ class GameWindow:
 
     def _add_log(self, line):
         self.log.append(line)
-        # Keep only the last 12 entries to fit on screen
         if len(self.log) > 12:
             self.log = self.log[-12:]
 
@@ -184,14 +164,12 @@ class GameWindow:
         if self.winner is not None:
             return
 
-        # Operative clicking a card
         if self._is_active_operative():
             for i in range(25):
                 if self._card_rect(i).collidepoint(pos) and i not in self.revealed:
                     self.network.send(make_message(P.GUESS_CARD, index=i))
                     return
 
-        # Spymaster controls
         if self._is_active_spymaster():
             if self.clue_box.collidepoint(pos):
                 self.clue_input_active = True
@@ -208,7 +186,6 @@ class GameWindow:
             self.clue_input_active = False
             return
 
-        # End Turn button (active operative who already guessed once)
         if self._is_active_operative() and self.guess_count_this_turn >= 1:
             if self.end_turn_button.collidepoint(pos):
                 self.network.send(make_message(P.END_TURN))
@@ -222,7 +199,6 @@ class GameWindow:
             self.clue_input = self.clue_input[:-1]
         else:
             ch = event.unicode
-            # Accept letters only, cap length.
             if ch.isalpha() and len(self.clue_input) < 18:
                 self.clue_input += ch
 
@@ -233,7 +209,6 @@ class GameWindow:
             return
         self.network.send(make_message(P.GIVE_CLUE, word=word, number=self.clue_number))
 
-    # -- messages ----------------------------------------------------------
 
     def _handle_message(self, msg):
         msg_type = msg.get("type")
@@ -249,7 +224,6 @@ class GameWindow:
             self.red_remaining = data.get("red_remaining", self.red_remaining)
             self.blue_remaining = data.get("blue_remaining", self.blue_remaining)
 
-            # If the turn changed, reset the local guess counter and clue input.
             if old_team != self.current_team:
                 self.guess_count_this_turn = 0
                 self.clue_input = ""
@@ -266,7 +240,6 @@ class GameWindow:
             color = data.get("color")
             guesser = data.get("team_that_guessed")
             self._add_log(f"{guesser.upper()} guessed {word.upper()} → {color.upper()}")
-            # Local "guess at least once" tracking for the End Turn button.
             if guesser == self.team and self.role == "operative":
                 self.guess_count_this_turn += 1
 
@@ -278,7 +251,6 @@ class GameWindow:
         elif msg_type == P.ERROR:
             self._add_log(f"Error: {data.get('message')}")
 
-    # -- rendering ---------------------------------------------------------
 
     def _card_background(self, index):
         """Return (fill_color, text_color) for a card."""
@@ -300,7 +272,6 @@ class GameWindow:
             pygame.draw.rect(self.screen, (15, 15, 18), rect, width=2, border_radius=8)
 
             word = card["word"]
-            # Use the smaller font if it doesn't fit.
             font = (self.font_card
                     if self.font_card.size(word)[0] < self.card_w - 16
                     else self.font_card_sm)
@@ -349,8 +320,6 @@ class GameWindow:
             log_lbl = self.font_small.render(line, True, FG)
             self.screen.blit(log_lbl, (x, y))
             y += 18
-
-        # Spymaster: clue input box + number +/- + Send button
         if self._is_active_spymaster():
             input_color = (60, 60, 80) if self.clue_input_active else (40, 40, 50)
             pygame.draw.rect(self.screen, input_color, self.clue_box, border_radius=6)
@@ -378,7 +347,6 @@ class GameWindow:
                 self.send_clue_button.y + (self.send_clue_button.height - send_lbl.get_height()) // 2,
             ))
 
-        # Active operative: End Turn button (only after at least one guess)
         elif self._is_active_operative():
             enabled = self.guess_count_this_turn >= 1
             color = (160, 110, 50) if enabled else (60, 60, 70)
@@ -389,7 +357,6 @@ class GameWindow:
                 self.end_turn_button.y + (self.end_turn_button.height - end_lbl.get_height()) // 2,
             ))
 
-        # End-game banner
         if self.winner is not None:
             banner = pygame.Rect(
                 self.side_left, self.height - 110, self.side_w, 80)
@@ -413,7 +380,6 @@ class GameWindow:
         self._draw_sidebar()
         pygame.display.flip()
 
-    # -- main loop ---------------------------------------------------------
 
     def run(self):
         running = True

@@ -1,14 +1,9 @@
-"""Codenames game engine — pure Python, no networking.
 
-The server's ClientHandler calls into this class to validate actions and
-update state. Errors are raised as InvalidAction so the handler can convert
-them into ERROR messages.
-"""
 
 import random
 
 
-# Card type constants — match the "color" field exposed to clients.
+
 RED = "red"
 BLUE = "blue"
 NEUTRAL = "neutral"
@@ -20,30 +15,20 @@ class InvalidAction(Exception):
 
 
 class Game:
-    """Codenames rules engine for a 4-player game.
-
-    `players` maps (team, role) -> username for the 4 seats. Inside the
-    engine we mostly identify players by their username (player_id).
-    """
 
     def __init__(self, players, word_pool, seed=None):
         if len(players) != 4:
             raise ValueError("Need exactly 4 players")
 
         self._rng = random.Random(seed)
-
-        # players: dict mapping (team, role) tuples -> username
-        # we also store the reverse lookup for convenience.
         self.players = dict(players)
         self.role_of = {username: (team, role)
                         for (team, role), username in players.items()}
 
-        # Pick 25 words and shuffle the colors.
         if len(word_pool) < 25:
             raise ValueError("Word pool must contain at least 25 words")
         words = self._rng.sample(word_pool, 25)
 
-        # Pick a starting team randomly: it gets 9, the other gets 8.
         self.starting_team = self._rng.choice([RED, BLUE])
         other = BLUE if self.starting_team == RED else RED
         colors = (
@@ -54,27 +39,21 @@ class Game:
         )
         self._rng.shuffle(colors)
 
-        # The board: list of 25 dicts, indexed 0..24 (row-major 5x5).
         self.board = [
             {"word": w, "color": c, "revealed": False}
             for w, c in zip(words, colors)
         ]
 
         self.current_team = self.starting_team
-        self.current_clue = None          # {"word": str, "number": int} or None
-        self.guesses_left = 0             # remaining guesses for the current clue
-        self.guesses_made_this_turn = 0   # used to enforce "guess at least once"
-        self.winner = None                # RED, BLUE, or None
-        self.over_reason = None           # "all_words" or "assassin"
-        # History of past clues (so the same clue word isn't repeated).
+        self.current_clue = None
+        self.guesses_left = 0
+        self.guesses_made_this_turn = 0
+        self.winner = None
+        self.over_reason = None
         self.past_clue_words = set()
 
-    # -----------------------------------------------------------------
-    # Views
-    # -----------------------------------------------------------------
 
     def get_start_payload_for(self, username):
-        """Build the GAME_START data dict for a specific player."""
         team, role = self.role_of[username]
         payload = {
             "board": [{"word": card["word"]} for card in self.board],
@@ -88,7 +67,6 @@ class Game:
         return payload
 
     def get_state_payload(self):
-        """Public state shared by everyone (no hidden colors)."""
         revealed = []
         for i, card in enumerate(self.board):
             if card["revealed"]:
@@ -102,12 +80,7 @@ class Game:
             "blue_remaining": self._remaining_for(BLUE),
         }
 
-    # -----------------------------------------------------------------
-    # Actions
-    # -----------------------------------------------------------------
-
     def give_clue(self, username, word, number) :
-        """Validate and record a clue. Resets the guess counter."""
         if self.is_over():
             raise InvalidAction("Game is over")
 
@@ -130,7 +103,6 @@ class Game:
         if not word_clean or " " in word_clean:
             raise InvalidAction("Clue must be exactly one word, no spaces")
 
-        # Substring check against unrevealed grid words.
         clue_lower = word_clean.lower()
         for card in self.board:
             if card["revealed"]:
@@ -145,12 +117,10 @@ class Game:
 
         self.current_clue = {"word": word_clean, "number": number}
         self.past_clue_words.add(clue_lower)
-        # N+1 guesses; N=0 means unlimited (we use a large sentinel).
         self.guesses_left = (number + 1) if number >= 1 else 10**6
         self.guesses_made_this_turn = 0
 
     def make_guess(self, username, index) :
-        """Reveal a card. Returns the GUESS_RESULT payload."""
         if self.is_over():
             raise InvalidAction("Game is over")
 
@@ -183,14 +153,12 @@ class Game:
             "team_that_guessed": team,
         }
 
-        # Resolve consequences.
         if card["color"] == ASSASSIN:
             self.winner = BLUE if team == RED else RED
             self.over_reason = "assassin"
             self._end_game()
             return result
 
-        # Win-by-completion can happen even on a wrong-team guess.
         if self._remaining_for(RED) == 0:
             self.winner = RED
             self.over_reason = "all_words"
@@ -203,16 +171,13 @@ class Game:
             return result
 
         if card["color"] != team:
-            # Wrong-team or neutral guess ends the turn immediately.
             self._pass_turn()
         elif self.guesses_left <= 0:
-            # Hit the N+1 limit.
             self._pass_turn()
 
         return result
 
     def end_turn(self, username) :
-        """Operative voluntarily ends the turn."""
         if self.is_over():
             raise InvalidAction("Game is over")
 
@@ -228,9 +193,6 @@ class Game:
 
         self._pass_turn()
 
-    # -----------------------------------------------------------------
-    # Internal helpers
-    # -----------------------------------------------------------------
 
     def _remaining_for(self, team) :
         return sum(1 for c in self.board if c["color"] == team and not c["revealed"])
