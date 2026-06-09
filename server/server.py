@@ -6,7 +6,7 @@ import socket
 import threading
 
 from shared import protocol as P
-from shared.crypto_utils import get_or_create_server_keys
+from shared.crypto_utils import KeyPair
 from shared.protocol import make_message
 
 from server.client_handler import ClientHandler
@@ -124,7 +124,8 @@ def main():
     print(f"[server] loading words from {words_file}")
     word_pool = _load_word_pool(words_file)
     print(f"[server] loaded {len(word_pool)} words")
-    private_key, public_key = get_or_create_server_keys()
+    server_keys = KeyPair()
+    server_keys.load_or_create_server()
     state = ServerState(word_pool)
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -136,7 +137,7 @@ def main():
     try:
         while True:
             client_sock, addr = server_socket.accept()
-            handler = ClientHandler(client_sock, addr, state, private_key, public_key)
+            handler = ClientHandler(client_sock, addr, state, server_keys)
             thread = threading.Thread(target=handler.run, daemon=True)
             thread.start()
     except KeyboardInterrupt:

@@ -4,7 +4,7 @@ import queue
 import socket
 import threading
 
-from shared.crypto_utils import make_client_keys, public_key_from_pem, public_key_to_pem
+from shared.crypto_utils import KeyPair
 from shared.protocol import recv_encrypted, recv_frame, send_encrypted, send_frame
 
 
@@ -18,7 +18,7 @@ class NetworkClient:
         self.host = host
         self.port = port
 
-        self.private_key, self.public_key = make_client_keys()
+        self.key_pair = KeyPair()
         self.server_public_key = None
 
         self.sock = None
@@ -34,8 +34,8 @@ class NetworkClient:
         self.sock.connect((self.host, self.port))
 
         server_pem = recv_frame(self.sock)
-        self.server_public_key = public_key_from_pem(server_pem)
-        send_frame(self.sock, public_key_to_pem(self.public_key))
+        self.server_public_key = self.key_pair.public_key_from_pem(server_pem)
+        send_frame(self.sock, self.key_pair.public_pem())
 
         self.recv_thread = threading.Thread(target=self._recv_loop, daemon=True)
         self.recv_thread.start()
@@ -53,7 +53,7 @@ class NetworkClient:
         if self._closed or self.sock is None:
             return
         try:
-            send_encrypted(self.sock, self.server_public_key, message)
+            send_encrypted(self.sock, self.key_pair, self.server_public_key, message)
         except Exception as exc:
             self.error = exc
             self.close()
@@ -67,7 +67,7 @@ class NetworkClient:
     def _recv_loop(self):
         try:
             while not self._closed:
-                msg = recv_encrypted(self.sock, self.private_key)
+                msg = recv_encrypted(self.sock, self.key_pair)
                 self.incoming.put(msg)
         except ConnectionError:
             self.error = ConnectionError("Disconnected from server")

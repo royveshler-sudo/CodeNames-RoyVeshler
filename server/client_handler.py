@@ -3,7 +3,6 @@ _author_ = 'Roy'
 import traceback
 
 from shared import protocol as P
-from shared.crypto_utils import public_key_from_pem, public_key_to_pem
 from shared.protocol import recv_encrypted, recv_frame, send_encrypted, send_frame, make_message
 
 from server.game import InvalidAction
@@ -11,12 +10,11 @@ from server.game import InvalidAction
 
 class ClientHandler:
 
-    def __init__(self, sock, addr, state, server_private_key, server_public_key):
+    def __init__(self, sock, addr, state, server_keys):
         self.sock = sock
         self.addr = addr
         self.state = state
-        self.server_private_key = server_private_key
-        self.server_public_key = server_public_key
+        self.server_keys = server_keys
 
         self.client_public_key = None
         self.username = None
@@ -34,7 +32,7 @@ class ClientHandler:
 
         try:
             while True:
-                msg = recv_encrypted(self.sock, self.server_private_key)
+                msg = recv_encrypted(self.sock, self.server_keys)
                 self._dispatch(msg)
         except ConnectionError:
             print(f"[server] {self.addr} disconnected")
@@ -47,12 +45,12 @@ class ClientHandler:
 
 
     def _handshake(self):
-        send_frame(self.sock, public_key_to_pem(self.server_public_key))
+        send_frame(self.sock, self.server_keys.public_pem())
         client_pem = recv_frame(self.sock)
-        self.client_public_key = public_key_from_pem(client_pem)
+        self.client_public_key = self.server_keys.public_key_from_pem(client_pem)
 
     def send(self, message):
-        send_encrypted(self.sock, self.client_public_key, message)
+        send_encrypted(self.sock, self.server_keys, self.client_public_key, message)
 
     def send_error(self, text):
         self.send(make_message(P.ERROR, message=text))

@@ -2,7 +2,7 @@ _author_ = 'Roy'
 
 import json
 
-from shared.crypto_utils import decrypt_with, encrypt_for
+from shared.crypto_utils import KeyPair
 
 
 # לקוח שולח לשרת
@@ -48,15 +48,15 @@ def _recv_exact(sock, n):
     return data
 
 
-def send_encrypted(sock, remote_public_key, message):
+def send_encrypted(sock, my_key_pair, remote_public_key, message):
     plaintext = json.dumps(message).encode("utf-8")
-    ciphertext = encrypt_for(remote_public_key, plaintext)
+    ciphertext = my_key_pair.encrypt_for(remote_public_key, plaintext)
     send_frame(sock, ciphertext)
 
 
-def recv_encrypted(sock, my_private_key):
+def recv_encrypted(sock, key_pair):
     ciphertext = recv_frame(sock)
-    plaintext = decrypt_with(my_private_key, ciphertext)
+    plaintext = key_pair.decrypt(ciphertext)
     return json.loads(plaintext.decode("utf-8"))
 
 
